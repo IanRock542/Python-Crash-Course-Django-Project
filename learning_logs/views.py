@@ -1,3 +1,4 @@
+from tabnanny import check
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from .models import Topic, Entry
@@ -20,8 +21,7 @@ def topics(request):
 def topic(request, topic_id):
     """Show a single topic and all its entries."""
     topic = Topic.objects.get(id=topic_id)
-    if topic.owner != request.user:
-        raise Http404
+    check_topic_owner(topic.owner, request.user)
 
     entries = topic.entry_set.order_by('-date_added')
     context = {'topic': topic, 'entries': entries}
@@ -49,6 +49,7 @@ def new_topic(request):
 def new_entry(request, topic_id):
     """Add a new entry for a particular topic."""
     topic = Topic.objects.get(id=topic_id)
+    check_topic_owner(topic.owner, request.user)
 
     if request.method !='POST':
         #No data submitted; create a blank form
@@ -70,8 +71,7 @@ def edit_entry(request, entry_id):
     """Edit an existing entry. pg.532 explanation"""
     entry = Entry.objects.get(id=entry_id)
     topic = entry.topic
-    if topic.owner != request.user:
-        raise Http404
+    check_topic_owner(topic.owner, request.user)
 
     if request.method != 'POST':
         #Initial request; pre-fill form with the current entry.
@@ -84,3 +84,8 @@ def edit_entry(request, entry_id):
             return redirect('learning_logs:topic', topic_id=topic.id)
     context = {'entry': entry, 'topic': topic, 'form': form}
     return render(request, r'learning_logs\edit_entry.html',context)
+
+def check_topic_owner(owner, current_user):
+    """Check if the current user matches the topic's owner."""
+    if owner != current_user:
+        raise Http404
